@@ -3,365 +3,389 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kemahiran Pemulihan: Tolak (Top 5 Aktiviti)</title>
+  <title>Matematik Ceria: Operasi Tolak</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
   <style>
-    body { box-sizing: border-box; }
-    .activity-card { min-height: 400px; }
-    .number-card { transition: all .3s ease; cursor: pointer; }
-    .number-card:hover { transform: scale(1.05); }
-    .dragging { opacity: .5; transform: rotate(5deg); }
-    .drop-zone {
-      border: 2px dashed #cbd5e1; transition: all .3s ease;
-      min-width: 120px; min-height: 60px;
-      display: inline-flex; align-items: center; justify-content: center;
+    /* --- UI STYLE (MASTER REFERENCE - TEMA HIJAU) --- */
+    body { 
+        font-family: 'Fredoka', sans-serif; 
+        background-color: #f0fdf4; 
+        background-image: radial-gradient(#86efac 2px, transparent 2px); 
+        background-size: 30px 30px; 
     }
-    .drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; }
-    .drop-zone-filled { border-style: solid; border-color: #4ade80; background-color: #f0fdf4; }
-    @keyframes shake { 0%{transform:translateX(0)} 25%{transform:translateX(-5px)} 50%{transform:translateX(5px)} 75%{transform:translateX(-5px)} 100%{transform:translateX(0)} }
-    .shake { animation: shake .5s ease; }
-    .good { outline: 3px solid #22c55e; background:#dcfce7; }
+    
+    .game-card { 
+        background: white; 
+        border: 4px solid #475569; 
+        box-shadow: 8px 8px 0px #00000020; 
+        border-radius: 1.5rem; 
+        min-height: 600px; 
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    
+    /* Buttons */
+    .btn-3d { 
+        transition: all 0.1s; 
+        border-bottom-width: 6px; 
+        border-color: rgba(0,0,0,0.2); 
+        transform: translateY(0); 
+        cursor: pointer; 
+        display: inline-block; 
+    }
+    .btn-3d:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 2px; box-shadow: none; }
+    .btn-3d:disabled { opacity: 0.6; cursor: not-allowed; border-bottom-width: 6px; filter: grayscale(100%); }
+
+    /* Animation */
+    .shake { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; background-color: #fee2e2 !important; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px) rotate(-5deg); } 75% { transform: translateX(8px) rotate(5deg); } }
+
+    /* --- STYLE KHUSUS --- */
+    
+    .number-card { cursor: pointer; transition: transform 0.2s; user-select: none; }
+    .number-card:hover { transform: scale(1.05); }
+
+    /* 1. DROP ZONE (FIXED SIZE & CENTERED) */
+    .drop-zone { 
+        border: 3px dashed #94a3b8; 
+        background-color: #f8fafc; 
+        transition: all .3s ease; 
+        border-radius: 0.75rem; 
+        
+        /* Tetapkan saiz supaya tak lari */
+        width: 90px; 
+        height: 60px; 
+        
+        /* Flexbox untuk letak nombor kat tengah */
+        display: inline-flex; 
+        align-items: center; 
+        justify-content: center;
+        
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #334155;
+    }
+    
+    .drop-zone.drag-over { border-color: #3b82f6; background-color: #dbeafe; transform: scale(1.05); }
+    
+    /* Class bila betul (Hijau) */
+    .drop-zone.filled { 
+        border: 3px solid #22c55e; 
+        background-color: #dcfce7; 
+        color: #15803d; 
+    }
+    
+    .dragging { opacity: 0.5; transform: rotate(5deg); }
+    .draggable-item { cursor: grab; user-select: none; touch-action: none; }
+    .draggable-item:active { cursor: grabbing; }
+
+    /* 2. SIMULASI PINJAM (CSS GRID) */
+    .alg-container {
+        display: grid;
+        grid-template-columns: 40px 60px 60px; /* Lajur: Simbol, Puluh, Sa */
+        gap: 10px 5px; 
+        justify-content: center;
+        align-items: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #334155;
+    }
+
+    .strike { position: relative; color: #ef4444; }
+    .strike::after {
+        content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 3px;
+        background-color: #ef4444; transform: rotate(-20deg);
+    }
+
+    .borrow-box {
+        position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+        background-color: #dcfce7; border: 3px solid #22c55e; color: #15803d;
+        font-size: 1.5rem; padding: 2px 8px; border-radius: 8px; z-index: 10;
+        min-width: 40px; text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    }
+    
+    .calc-line {
+        grid-column: 1 / -1; height: 4px; background-color: #475569; border-radius: 2px; margin: 5px 0;
+    }
+
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-full">
+<body class="min-h-screen text-slate-800 pb-10">
 
-  <!-- Info bar -->
-  <div class="bg-yellow-100 border-b-4 border-yellow-300 p-4 shadow-sm sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
+  <div class="fixed top-4 left-0 right-0 z-50 px-4 pointer-events-none">
+    <div class="max-w-4xl mx-auto bg-green-400 border-4 border-green-600 rounded-full px-6 py-3 shadow-xl flex items-center justify-between pointer-events-auto transform hover:scale-[1.01] transition-transform">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">📚</span>
-        <span id="info-text" class="text-lg font-semibold text-gray-800">
-          Pilih aktiviti untuk mula belajar operasi tolak!
-        </span>
+        <span class="text-3xl animate-bounce">➖</span>
+        <span id="info-text" class="text-xl font-bold text-green-900 leading-none mt-1">Operasi Tolak (Kumpul Semula)</span>
       </div>
-      <button id="speak-btn"
-              class="bg-yellow-300 hover:bg-yellow-400 text-yellow-800 font-bold py-2 px-4 rounded-full text-xl transition-colors duration-200"
-              onclick="speakInfo()">
-        🔊
-      </button>
+      <button id="speak-btn" onclick="speakInfo()" class="bg-white hover:bg-green-50 text-green-600 border-2 border-green-200 rounded-full p-2 transition-colors shadow-sm">🔊</button>
     </div>
   </div>
+  <div class="h-24"></div>
 
-  <div class="max-w-6xl mx-auto p-6">
-    <!-- Activity card -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 activity-card flex items-center justify-center">
-      <div id="activity-content" class="text-center w-full">
-        <div class="py-16">
-          <div class="text-6xl mb-4">➖</div>
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">
-            Kemahiran Pemulihan: Tolak (Mengumpul Semula)
-          </h2>
-        <p class="text-xl text-gray-600 mb-8">
-          5 aktiviti interaktif: MCQ, True/False, Padanan, <b>Seret Jawapan</b> & Simulasi Pinjam 10.
-        </p>
-          <div class="text-4xl">👇</div>
+  <div class="max-w-6xl mx-auto p-4">
+    
+    <div class="game-card p-8 mb-8">
+        <div id="activity-content" class="w-full relative z-10">
+            <div class="py-10 text-center">
+                <div class="text-8xl mb-6 animate-pulse">📉</div>
+                <h2 class="text-5xl font-bold text-emerald-600 mb-4">Operasi Tolak</h2>
+                <p class="text-2xl text-slate-500 mb-8 font-semibold">Top 5 Aktiviti Pemulihan</p>
+                <div class="text-4xl animate-bounce">👇</div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <!-- Activity picker -->
-    <div class="bg-white rounded-xl shadow-lg p-6">
-      <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Pilih Aktiviti</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <button onclick="loadActivity(1)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg">🎯 MCQ Tolak</button>
-        <button onclick="loadActivity(2)" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg text-lg">✅❌ True/False</button>
-        <button onclick="loadActivity(3)" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg text-lg">🃏 Padanan</button>
-        <button onclick="loadActivity(4)" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded-lg text-lg">🧲 Seret Jawapan</button>
-        <button onclick="loadActivity(5)" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-4 rounded-lg text-lg">🧪 Simulasi Pinjam 10</button>
+    <div class="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg p-6 border-2 border-white">
+      <h3 class="text-2xl font-bold text-slate-700 mb-4 text-center">🎮 Pilih Aktiviti</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <button onclick="loadActivity(1)" class="btn-3d bg-blue-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🎯 MCQ</button>
+        <button onclick="loadActivity(2)" class="btn-3d bg-green-500 text-white font-bold py-4 px-2 rounded-xl text-lg">✅❌ Betul/Salah</button>
+        <button onclick="loadActivity(3)" class="btn-3d bg-purple-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🃏 Padanan</button>
+        <button onclick="loadActivity(4)" class="btn-3d bg-orange-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🧲 Seret Jawapan</button>
+        <button onclick="loadActivity(5)" class="btn-3d bg-rose-500 text-white font-bold py-4 px-2 rounded-xl text-lg">🧪 Simulasi Pinjam</button>
       </div>
-
-      <div class="flex justify-center gap-4">
-        <button onclick="clearActivity()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg text-lg">🧹 Bersih</button>
-        <button onclick="nextActivity()" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg text-lg">➡️ Seterusnya</button>
+      <div class="flex justify-center gap-4 border-t-2 border-slate-100 pt-6">
+        <button onclick="clearActivity()" class="btn-3d bg-slate-400 text-white font-bold py-2 px-6 rounded-full text-lg">🏠 Menu</button>
+        <button onclick="nextActivity()" class="btn-3d bg-indigo-500 text-white font-bold py-2 px-8 rounded-full text-xl">Seterusnya ➡️</button>
       </div>
     </div>
   </div>
 
   <script>
+    /* --- HELPERS --- */
     let currentActivity = 0;
     let ttsEnabled = false;
-    let currentInfo = "Pilih aktiviti untuk mula belajar operasi tolak!";
+    let currentInfo = "Selamat datang!";
     let draggedElement = null;
 
-    /* ====== TTS ====== */
-    function speak(text) {
-      if (!ttsEnabled) return;
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      setTimeout(() => {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'ms-MY';
-        u.rate = 0.95; u.pitch = 1.05;
-        const voices = window.speechSynthesis.getVoices();
-        const ms = voices.find(v => v.lang === 'ms-MY' || v.lang?.startsWith('ms'));
-        if (ms) u.voice = ms;
-        window.speechSynthesis.speak(u);
-      }, 120);
+    function triggerWin() { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } }); }
+
+    function speak(text) { 
+        if (!ttsEnabled || !('speechSynthesis' in window)) return; 
+        window.speechSynthesis.cancel(); 
+        const u = new SpeechSynthesisUtterance(text); u.lang = 'ms-MY'; u.rate = 0.95; u.pitch = 1.05; 
+        const ms = window.speechSynthesis.getVoices().find(v => v.lang === 'ms-MY' || v.lang?.startsWith('ms')); 
+        if (ms) u.voice = ms; 
+        window.speechSynthesis.speak(u); 
     }
-    function setInfo(text) { currentInfo = text; document.getElementById('info-text').textContent = text; }
-    function speakInfo() {
-      if (!ttsEnabled) {
-        ttsEnabled = true;
-        const btn = document.getElementById('speak-btn');
-        btn.classList.add('bg-green-300', 'hover:bg-green-400');
-        btn.classList.remove('bg-yellow-300', 'hover:bg-yellow-400');
-      }
-      speak(currentInfo);
+    
+    function setInfo(text) { 
+        currentInfo = text; const infoEl = document.getElementById('info-text'); 
+        infoEl.style.opacity = 0; setTimeout(() => { infoEl.textContent = text; infoEl.style.opacity = 1; }, 200); 
+    }
+    
+    function speakInfo() { 
+        if (!ttsEnabled) { ttsEnabled = true; document.getElementById('speak-btn').classList.add('bg-green-100', 'text-green-600'); } 
+        speak(currentInfo); 
     }
 
-    /* ====== DnD helpers ====== */
-    function dragStart(e) { draggedElement = e.target; e.target.classList.add('dragging'); }
-    function dragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drop-zone').forEach(z=>z.classList.remove('drag-over')); }
-    function allowDrop(e) { e.preventDefault(); if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.add('drag-over'); }
-    function dragLeave(e) { if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.remove('drag-over'); }
-
-    /* ====== Util ====== */
     const r = (min,max)=>Math.floor(Math.random()*(max-min+1))+min;
-    function rndSub(){ let a=r(12,99); let b=r(1,a-1); return {a,b,ans:a-b}; }
+    function rndSub() { let a=r(20,99); let b=r(1,a-1); return {a,b,ans:a-b}; }
     function makeOptions(correct, spread=6, count=4){
       const set=new Set([correct]);
-      while(set.size<count){
-        const delta=r(1,spread)*(Math.random()>.5?1:-1);
-        const v=Math.max(0, correct+delta);
-        if(v!==correct) set.add(v);
-      }
+      while(set.size<count){ const delta=r(1,spread)*(Math.random()>.5?1:-1); const v=Math.max(0, correct+delta); if(v!==correct) set.add(v); }
       return Array.from(set).sort(()=>Math.random()-0.5);
     }
 
-    /* ====== Router ====== */
-    function loadActivity(n){
-      currentActivity=n;
-      const c=document.getElementById('activity-content');
-      if(n===1) return loadMCQ(c);
-      if(n===2) return loadTF(c);
-      if(n===3) return loadMatch(c);
-      if(n===4) return loadDragAnswer(c);
-      if(n===5) return loadBorrowSim(c);
+    /* --- DRAG & DROP LOGIC --- */
+    window.dragStart = function(e) { draggedElement = e.target; e.target.classList.add('dragging'); }
+    window.dragEnd = function(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drop-zone').forEach(z=>z.classList.remove('drag-over')); }
+    window.allowDrop = function(e) { e.preventDefault(); if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.add('drag-over'); }
+    window.dragLeave = function(e) { if (e.currentTarget.classList.contains('drop-zone')) e.currentTarget.classList.remove('drag-over'); }
+
+    /* --- ROUTER --- */
+    function loadActivity(n) {
+      currentActivity = n;
+      const content = document.getElementById('activity-content');
+      content.style.opacity = 0;
+      setTimeout(() => {
+          if (n === 1) loadMCQ(content);
+          if (n === 2) loadTrueFalse(content);
+          if (n === 3) loadMatchingPairs(content);
+          if (n === 4) loadDragAnswer(content);
+          if (n === 5) loadBorrowSim(content);
+          content.style.opacity = 1;
+      }, 200);
     }
 
-    /* ====== 1) MCQ Tolak ====== */
-    function loadMCQ(content){
-      const Q=rndSub();
-      setInfo("Pilih jawapan betul untuk operasi tolak.");
-      const opts=makeOptions(Q.ans,6,4);
-      content.innerHTML=`
-        <h3 class="text-2xl font-bold text-blue-600 mb-6">🎯 MCQ – Operasi Tolak</h3>
-        <div class="text-xl text-gray-800 mb-6">Berapakah nilai <b>${Q.a} − ${Q.b}</b> ?</div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          ${opts.map(v=>`
-            <button class="number-card bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-2xl font-bold"
-                    onclick="checkMCQ(this, ${v}, ${Q.ans})">${v}</button>`).join('')}
-        </div>
-        <div id="mcq-msg" class="text-lg font-semibold text-center"></div>
-        <div class="mt-4 text-center">
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-                  onclick="loadMCQ(document.getElementById('activity-content'))">🔄 Soalan Baharu</button>
+    function clearActivity() {
+        currentActivity = 0;
+        document.getElementById('activity-content').innerHTML = `<div class="py-10 text-center"><div class="text-8xl mb-6 animate-pulse">📉</div><h2 class="text-5xl font-bold text-emerald-600 mb-4">Operasi Tolak</h2><p class="text-2xl text-slate-500 mb-8 font-semibold">Mengumpul Semula (Pinjam)</p><div class="text-4xl animate-bounce">👇</div></div>`;
+        setInfo("Pilih aktiviti untuk mula!");
+    }
+    function nextActivity() { let next = currentActivity + 1; if (next > 5) next = 1; loadActivity(next); }
+
+
+    /* =========================================
+       LOGIK AKTIVITI
+       ========================================= */
+
+    /* 1. MCQ */
+    function loadMCQ(c){
+      const Q=rndSub(); setInfo("Pilih jawapan yang betul."); const opts=makeOptions(Q.ans,6,4);
+      c.innerHTML = `
+        <h3 class="text-4xl font-bold text-blue-500 mb-6 text-center">🎯 MCQ - Tolak</h3>
+        <div class="bg-blue-50 rounded-3xl p-8 border-4 border-blue-200 max-w-2xl mx-auto text-center">
+           <div class="text-4xl font-bold text-slate-700 mb-8">${Q.a} - ${Q.b} = <span class="text-blue-500">?</span></div>
+           <div class="grid grid-cols-2 gap-4 mb-6">${opts.map(v=>`<button class="btn-3d bg-white border-blue-300 text-blue-600 text-3xl font-bold py-4 rounded-xl shadow-sm" onclick="checkMCQ(this, ${v}, ${Q.ans})">${v}</button>`).join('')}</div>
+           <div id="mcq-msg" class="text-xl font-bold min-h-[30px]"></div>
+           <div class="mt-4"><button class="text-slate-400 font-bold underline" onclick="loadMCQ(document.getElementById('activity-content'))">Soalan Baharu 🔄</button></div>
         </div>`;
     }
-    function checkMCQ(btn, v, correct){
-      const m=document.getElementById('mcq-msg');
-      if(v===correct){ btn.classList.add('good'); m.textContent='Bagus! Betul.'; setInfo('Bagus! Betul.'); speak('Bagus!'); }
-      else { btn.classList.add('shake'); m.textContent='Kurang tepat. Cuba lagi.'; setInfo('Kurang tepat.'); speak('Kurang tepat.'); }
+    window.checkMCQ = function(btn, val, correct){
+       const box=document.getElementById('mcq-msg');
+       if(val===correct){ box.textContent="Bagus! Jawapan betul."; box.className="text-xl font-bold text-green-600 mt-2"; setInfo("Bagus! Jawapan betul."); speak("Bagus!"); triggerWin(); } 
+       else { btn.classList.add('shake'); setTimeout(()=>btn.classList.remove('shake'), 400); box.textContent="Cuba lagi."; box.className="text-xl font-bold text-rose-500 mt-2"; setInfo("Cuba lagi."); speak("Cuba lagi."); }
     }
 
-    /* ====== 2) True/False Tolak ====== */
-    function loadTF(content){
-      const Q=rndSub();
-      const isTrue=Math.random()>.5;
-      const shown=isTrue?Q.ans:Q.ans + (Math.random()>.5?1:-1)*r(1,5);
-      setInfo("Tentukan Betul atau Salah.");
-      content.innerHTML=`
-        <h3 class="text-2xl font-bold text-green-600 mb-6">✅❌ True/False – Tolak</h3>
-        <div class="text-xl text-gray-800 mb-6"><b>${Q.a} − ${Q.b}</b> = <b>${shown}</b></div>
-        <div class="flex gap-3 justify-center">
-          <button class="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-xl" onclick="answerTF(${isTrue}, true)">✅ Betul</button>
-          <button class="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl" onclick="answerTF(${isTrue}, false)">❌ Salah</button>
-        </div>
-        <div id="tf-msg" class="mt-6 text-lg font-semibold text-center"></div>
-        <div class="mt-3 text-center">
-          <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl"
-                  onclick="loadTF(document.getElementById('activity-content'))">🔄 Soalan Baharu</button>
+    /* 2. True / False */
+    function loadTrueFalse(c){
+      const Q=rndSub(); const isTrue=Math.random()>.5; const val = isTrue?Q.ans:Q.ans + (Math.random()>.5?1:-1)*r(1,5); setInfo("Betul atau Salah?");
+      c.innerHTML = `
+        <h3 class="text-4xl font-bold text-green-500 mb-6 text-center">✅❌ Betul atau Salah</h3>
+        <div class="bg-green-50 rounded-3xl p-8 border-4 border-green-200 max-w-2xl mx-auto text-center">
+           <div class="text-4xl font-bold text-slate-700 mb-8">${Q.a} - ${Q.b} = ${val}</div>
+           <div class="flex gap-6 justify-center mb-6">
+             <button class="btn-3d bg-green-600 text-white font-bold py-4 px-8 rounded-xl text-2xl" onclick="answerTF(${isTrue}, true)">✅ Betul</button>
+             <button class="btn-3d bg-red-500 text-white font-bold py-4 px-8 rounded-xl text-2xl" onclick="answerTF(${isTrue}, false)">❌ Salah</button>
+           </div>
+           <div id="tf-msg" class="text-xl font-bold min-h-[30px]"></div>
+           <div class="mt-4"><button class="text-slate-400 font-bold underline" onclick="loadTrueFalse(document.getElementById('activity-content'))">Soalan Baharu 🔄</button></div>
         </div>`;
     }
-    function answerTF(isTrue, user){
-      const el=document.getElementById('tf-msg');
-      if(isTrue===user){ el.textContent='Tepat!'; setInfo('Tepat!'); speak('Tepat!'); }
-      else { el.textContent='Belum tepat. Cuba lagi.'; setInfo('Belum tepat.'); speak('Belum tepat.'); }
+    window.answerTF = function(isTrue, user){
+       const el=document.getElementById('tf-msg');
+       if(isTrue===user){ el.textContent="Tepat sekali!"; el.className="text-xl font-bold text-green-600 mt-2"; setInfo("Tepat!"); speak("Tepat!"); triggerWin(); } 
+       else { el.textContent="Kurang tepat. Cuba lagi."; el.className="text-xl font-bold text-rose-500 mt-2"; setInfo("Kurang tepat."); speak("Kurang tepat."); }
     }
 
-    /* ====== 3) Padanan (ayat ↔ jawapan) ====== */
-    function loadMatch(content){
-      setInfo("Padankan ayat matematik tolak dengan jawapannya.");
-      const left=[], right=[];
-      for(let i=0;i<4;i++){ const q=rndSub(); left.push({text:`${q.a} − ${q.b}`, ans:q.ans}); right.push(q.ans); }
-      right.sort(()=>Math.random()-0.5);
-      content.innerHTML=`
-        <h3 class="text-2xl font-bold text-purple-600 mb-6">🃏 Padanan – Tolak</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div class="text-sm font-semibold text-slate-600 mb-2">Ayat Matematik</div>
-            <div id="pairs-left" class="flex flex-col gap-3">
-              ${left.map(q=>`
-                <div class="bg-purple-50 border-2 border-purple-200 rounded-lg p-3 flex items-center justify-between">
-                  <span class="text-lg font-bold">${q.text}</span>
-                  <span class="drop-zone w-24 h-12" data-ans="${q.ans}"
-                        ondrop="dropPair(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">Letak jawapan</span>
-                </div>`).join('')}
-            </div>
-          </div>
-          <div>
-            <div class="text-sm font-semibold text-slate-600 mb-2">Kad Jawapan</div>
-            <div id="pairs-right" class="flex flex-wrap gap-3">
-              ${right.map(v=>`
-                <div class="number-card bg-white border-2 border-purple-200 rounded-lg p-3 text-lg font-bold cursor-move"
-                     draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-val="${v}">
-                  ${v}
-                </div>`).join('')}
-            </div>
-          </div>
+    /* 3. Padanan (Fixed Size) */
+    function loadMatchingPairs(c){
+      setInfo("Padankan ayat matematik dengan jawapannya.");
+      const eqs=[]; const ans=[];
+      for(let i=0;i<4;i++){ const q=rndSub(); eqs.push({id:'q'+i, text:`${q.a} - ${q.b}`, ans:q.ans}); ans.push({id:'a'+i, text:String(q.ans)}); }
+      const shuffle = arr=>arr.sort(()=>Math.random()-0.5);
+      c.innerHTML = `
+        <h3 class="text-4xl font-bold text-purple-500 mb-6 text-center">🃏 Padanan</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+           <div class="bg-purple-50 p-6 rounded-3xl border-4 border-purple-200">
+              <h4 class="text-center font-bold text-slate-400 mb-4 uppercase">Soalan</h4>
+              <div class="flex flex-col gap-3">
+                 ${eqs.map(q=>`<div class="bg-white border-2 border-purple-100 rounded-xl p-2 px-4 flex justify-between items-center h-20"><span class="text-2xl font-bold text-purple-600">${q.text}</span><span class="drop-zone" ondrop="dropPair(event, ${q.ans})" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></span></div>`).join('')}
+              </div>
+           </div>
+           <div class="bg-white p-6 rounded-3xl border-4 border-slate-200">
+              <h4 class="text-center font-bold text-slate-400 mb-4 uppercase">Jawapan</h4>
+              <div class="flex flex-wrap gap-3 justify-center content-start">
+                 ${shuffle(ans).map(a=>`<div class="btn-3d bg-purple-500 text-white border-purple-700 rounded-lg w-20 h-16 flex items-center justify-center text-2xl font-bold cursor-move draggable-item" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-val="${a.text}">${a.text}</div>`).join('')}
+              </div>
+           </div>
         </div>
-        <div id="pair-msg" class="mt-4 text-center font-semibold"></div>`;
-      window._pairsToGo = left.length;
+        <div id="pair-msg" class="mt-4 text-center font-bold text-xl text-green-600 min-h-[30px]"></div>`;
+      window._pairsToGo = eqs.length;
     }
-    function dropPair(e){
-      e.preventDefault(); e.currentTarget.classList.remove('drag-over');
-      if(!draggedElement) return;
-      const want=parseInt(e.currentTarget.dataset.ans);
-      const got=parseInt(draggedElement.dataset.val);
-      if(want===got){
-        e.currentTarget.textContent=got;
-        e.currentTarget.classList.add('drop-zone-filled');
-        draggedElement.remove(); draggedElement=null;
-        window._pairsToGo--;
-        if(window._pairsToGo===0){ document.getElementById('pair-msg').textContent='Semua padanan betul!'; setInfo('Semua padanan betul!'); speak('Syabas!'); }
-      } else {
-        e.currentTarget.classList.add('shake'); setInfo('Padanan belum tepat.'); speak('Belum tepat.');
-        setTimeout(()=>e.currentTarget.classList.remove('shake'),500);
-      }
+    window.dropPair = function(e, sum){
+       e.preventDefault(); e.currentTarget.classList.remove('drag-over'); if(!draggedElement) return;
+       const v = parseInt(draggedElement.dataset.val);
+       e.currentTarget.classList.remove('shake');
+       if(v === sum){
+         e.currentTarget.textContent = v; e.currentTarget.classList.add('filled'); draggedElement.remove(); draggedElement = null; 
+         window._pairsToGo--; if(window._pairsToGo === 0){ document.getElementById('pair-msg').textContent='Semua padanan betul!'; setInfo('Semua padanan betul!'); triggerWin(); } else { speak("Betul!"); }
+       } else {
+         e.currentTarget.classList.add('shake'); setTimeout(()=>e.currentTarget.classList.remove('shake'),400); setInfo('Padanan belum tepat.'); speak("Cuba lagi.");
+       }
     }
 
-    /* ====== 4) Seret Jawapan (a − b = ?) ====== */
-    function loadDragAnswer(content){
+    /* 4. Seret Jawapan (Updated Logic: A - B = ?) */
+    function loadDragAnswer(c){
       const a=r(20,99), b=r(1,a-1), ans=a-b;
-      const choices=Array.from(new Set([ans, Math.max(0,ans-1), ans+1, Math.max(0,ans-2), ans+2]))
-        .sort(()=>Math.random()-0.5);
-      setInfo("Seret JAWAPAN yang betul ke Ruang Jawapan.");
-      content.innerHTML=`
-        <h3 class="text-2xl font-bold text-orange-600 mb-6">🧲 Seret Ruang Jawapan – Tolak</h3>
-        <div class="text-xl text-gray-800 mb-4 text-center">${a} − ${b} = <span class="font-bold text-orange-700">?</span></div>
-        <div class="flex justify-center mb-6">
-          <div id="answer-drop" class="drop-zone px-6 py-4 rounded-lg"
-               ondrop="dropAnswer(event, ${ans})" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
-            RUANG JAWAPAN
-          </div>
-        </div>
-        <div class="text-sm text-slate-600 text-center mb-2">Seret salah satu kad nombor ke Ruang Jawapan</div>
-        <div class="flex flex-wrap gap-3 justify-center">
-          ${choices.map(n=>`
-            <div class="number-card bg-orange-50 border-2 border-orange-200 rounded-lg p-3 text-xl font-bold text-orange-800 cursor-move"
-                 draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-number="${n}">
-              ${n}
-            </div>`).join('')}
-        </div>
-        <div id="blank-msg" class="mt-5 text-center font-semibold"></div>`;
-    }
-    function dropAnswer(e, correct){
-      e.preventDefault(); e.currentTarget.classList.remove('drag-over');
-      if(!draggedElement) return;
-      const v=parseInt(draggedElement.dataset.number);
-      if(v===correct){
-        e.currentTarget.textContent=v;
-        e.currentTarget.classList.add('drop-zone-filled');
-        draggedElement.remove(); draggedElement=null;
-        setInfo('Betul! Syabas!'); speak('Betul! Syabas!');
-        document.getElementById('blank-msg').textContent='Jawapan tepat.';
-      } else {
-        setInfo('Belum tepat. Cuba lagi.'); speak('Belum tepat. Cuba lagi.');
-        e.currentTarget.classList.add('shake'); setTimeout(()=>e.currentTarget.classList.remove('shake'),400);
-      }
-    }
-
-    /* ====== 5) Simulasi Pinjam 10 (bentuk lazim) ====== */
-    function loadBorrowSim(content){
-      let tens=r(2,8), ones=r(0,9), subT=r(1,tens), subO=r(2,9);
-      if(ones>=subO){ ones=r(0, subO-1); }
-      const A=tens*10+ones, B=subT*10+subO, afterBorrowOnes=ones+10;
-      setInfo("Klik 'Pinjam' untuk tukar 1 puluh → 10 sa, kemudian kira lajur Sa dan Puluh.");
-      content.innerHTML=`
-        <h3 class="text-2xl font-bold text-rose-600 mb-4">🧪 Simulasi Pinjam 10</h3>
-        <div class="grid md:grid-cols-2 gap-6 items-start">
-          <div class="bg-rose-50 border-2 border-rose-200 rounded-xl p-4">
-            <div class="text-sm text-slate-600 mb-2">Bentuk lazim</div>
-            <table class="w-full text-center select-none">
-              <thead><tr class="text-slate-500 text-sm"><th>Puluh</th><th>Sa</th></tr></thead>
-              <tbody class="text-2xl font-bold">
-                <tr><td id="tens-top">${tens}</td><td id="ones-top">${ones}</td></tr>
-                <tr class="text-slate-400"><td colspan="2"><hr/></td></tr>
-                <tr><td class="text-slate-700">− ${subT}</td><td class="text-slate-700">${subO}</td></tr>
-              </tbody>
-            </table>
-            <div class="mt-4 flex flex-wrap gap-2">
-              <button id="borrow-btn" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg">↘️ Pinjam 1 Puluh</button>
-              <button id="solve-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg" disabled>✅ Kira</button>
-              <button id="new-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">🔄 Soalan Baharu</button>
+      const choices=Array.from(new Set([ans, Math.max(0,ans-1), ans+1, Math.max(0,ans-2), ans+2])).sort(()=>Math.random()-0.5);
+      setInfo("Seret jawapan yang betul.");
+      c.innerHTML = `
+        <h3 class="text-4xl font-bold text-orange-500 mb-6 text-center">🧲 Seret Jawapan</h3>
+        <div class="bg-orange-50 rounded-3xl p-8 border-4 border-orange-200 max-w-3xl mx-auto text-center">
+            <div class="text-4xl font-bold text-slate-700 mb-10 flex items-center justify-center gap-4">
+                ${a} - ${b} = <span class="drop-zone" ondrop="dropToBlank(event, ${ans})" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"></span>
             </div>
-            <div id="borrow-note" class="mt-3 text-sm text-slate-600">Langkah 1: Pinjam 1 puluh (jadi ${tens-1} puluh & ${afterBorrowOnes} sa).</div>
-            <div id="borrow-result" class="mt-3 font-semibold"></div>
-          </div>
-          <div>
-            <div class="text-lg font-semibold mb-2">Ayat Matematik</div>
-            <div class="text-3xl font-black">${A} − ${B} = <span id="final-ans" class="text-rose-700">?</span></div>
-            <div class="mt-3 text-sm text-slate-600">Kira lajur Sa dahulu (selepas pinjam), kemudian lajur Puluh.</div>
-          </div>
+            <div class="flex flex-wrap gap-4 justify-center">
+                ${choices.map(n=>`<div class="btn-3d bg-orange-500 text-white border-orange-700 rounded-xl p-4 text-2xl font-bold cursor-move draggable-item" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)" data-number="${n}">${n}</div>`).join('')}
+            </div>
+            <div id="b5-msg" class="text-xl font-bold mt-6 min-h-[30px] text-green-600"></div>
+            <div class="mt-4"><button class="text-slate-400 font-bold underline" onclick="loadDragAnswer(document.getElementById('activity-content'))">Soalan Baharu 🔄</button></div>
         </div>`;
-      const tensTop=document.getElementById('tens-top');
-      const onesTop=document.getElementById('ones-top');
-      const borrowBtn=document.getElementById('borrow-btn');
-      const solveBtn=document.getElementById('solve-btn');
-      const note=document.getElementById('borrow-note');
-      const res=document.getElementById('borrow-result');
-      let borrowed=false;
-      borrowBtn.addEventListener('click', ()=>{
-        if(borrowed) return;
-        if(parseInt(onesTop.textContent) >= subO){ note.textContent="Sa sudah cukup, tak perlu pinjam."; return; }
-        tensTop.textContent=tens-1; onesTop.textContent=afterBorrowOnes;
-        borrowed=true; borrowBtn.disabled=true; solveBtn.disabled=false; borrowBtn.classList.add('opacity-60');
-        setInfo("1 puluh dipinjam menjadi 10 sa."); speak("Satu puluh dipinjam menjadi sepuluh sa.");
-      });
-      solveBtn.addEventListener('click', ()=>{
-        if(!borrowed && parseInt(onesTop.textContent) < subO){ res.textContent="Perlu pinjam dahulu."; return; }
-        const onesRes=parseInt(onesTop.textContent)-subO;
-        const tensRes=parseInt(tensTop.textContent)-subT;
-        const final=tensRes*10 + onesRes;
-        document.getElementById('final-ans').textContent=final;
-        res.textContent=`Sa = ${onesTop.textContent} − ${subO} = ${onesRes}; Puluh = ${tensTop.textContent} − ${subT} = ${tensRes}.`;
-        setInfo(`Jawapan = ${final}. Syabas!`); speak(`Jawapan ${final}`); solveBtn.disabled=true;
-      });
-      document.getElementById('new-btn').addEventListener('click', ()=>loadBorrowSim(content));
+    }
+    window.dropToBlank = function(e, correct){
+       e.preventDefault(); e.currentTarget.classList.remove('drag-over'); if(!draggedElement) return;
+       const v=parseInt(draggedElement.dataset.number);
+       e.currentTarget.classList.remove('shake');
+       if(v===correct){
+         e.currentTarget.textContent=v; e.currentTarget.classList.add('filled'); 
+         draggedElement.remove(); draggedElement=null; setInfo('Betul!'); document.getElementById('b5-msg').textContent='Syabas!'; triggerWin();
+       } else {
+         e.currentTarget.classList.add('shake'); setTimeout(()=>e.currentTarget.classList.remove('shake'),400); setInfo('Cuba lagi.'); speak("Cuba lagi");
+       }
     }
 
-    /* ====== Kawalan Umum ====== */
-    function clearActivity(){
-      currentActivity=0;
-      document.getElementById('activity-content').innerHTML=`
-        <div class="text-center py-16">
-          <div class="text-6xl mb-4">➖</div>
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">Kemahiran Pemulihan: Tolak (Mengumpul Semula)</h2>
-          <p class="text-xl text-gray-600 mb-8">5 aktiviti interaktif: MCQ, True/False, Padanan, Seret Jawapan & Simulasi Pinjam 10.</p>
-          <div class="text-4xl">👇</div>
+    /* 5. Simulasi Pinjam (Fixed Alignment with Grid) */
+    function loadBorrowSim(c){
+      let tens=r(2,8); let ones=r(0,5); 
+      let subT=r(1,tens-1); let subO=r(ones+1, 9); 
+      const A=tens*10+ones; const B=subT*10+subO;
+      const afterBorrowOnes = ones+10;
+      
+      setInfo("Tekan 'Pinjam' untuk selesaikan.");
+      c.innerHTML=`
+        <h3 class="text-4xl font-bold text-rose-500 mb-6 text-center">🧪 Simulasi Pinjam 10</h3>
+        
+        <div class="max-w-4xl mx-auto bg-white border-4 border-rose-200 rounded-3xl p-8 flex flex-col md:flex-row gap-10 items-center justify-center">
+           <div class="bg-rose-50 p-8 rounded-3xl border-2 border-rose-100 shadow-inner pt-16">
+              <div class="alg-container">
+                 <div></div><div class="text-sm text-slate-400 uppercase tracking-widest mb-2">Pu</div><div class="text-sm text-slate-400 uppercase tracking-widest mb-2">Sa</div>
+                 <div></div><div class="relative" id="cell-tens">${tens}</div><div class="relative" id="cell-ones">${ones}</div>
+                 <div class="text-slate-400 font-black">-</div><div>${subT}</div><div>${subO}</div>
+                 <div class="calc-line"></div>
+                 <div></div><div id="ans-tens" class="text-rose-600">?</div><div id="ans-ones" class="text-rose-600">?</div>
+              </div>
+           </div>
+           <div class="flex flex-col justify-center gap-4 min-w-[250px]">
+              <div class="text-lg font-bold text-slate-600 mb-2">Langkah Pengiraan:</div>
+              <button id="btn-borrow" class="btn-3d bg-rose-500 text-white py-4 px-6 rounded-xl text-xl font-bold flex items-center justify-center gap-2">1. Pinjam 1 Puluh ↘️</button>
+              <button id="btn-calc" class="btn-3d bg-slate-300 text-white py-4 px-6 rounded-xl text-xl font-bold flex items-center justify-center gap-2" disabled>2. Kira Jawapan ✅</button>
+              <div id="borrow-fb" class="mt-4 font-bold text-center text-xl h-8 text-slate-500">...</div>
+              <button class="text-slate-400 font-bold underline mt-6 hover:text-rose-500" onclick="loadBorrowSim(document.getElementById('activity-content'))">Soalan Baru 🔄</button>
+           </div>
         </div>`;
-      setInfo("Pilih aktiviti untuk mula belajar operasi tolak!");
-    }
-    function nextActivity(){
-      if(currentActivity===0) return loadActivity(1);
-      if(currentActivity<5) return loadActivity(currentActivity+1);
-      return loadActivity(1);
+
+      const tEl = document.getElementById('cell-tens');
+      const oEl = document.getElementById('cell-ones');
+      
+      document.getElementById('btn-borrow').onclick = function(){
+         this.disabled=true; this.className="btn-3d bg-slate-300 text-white py-4 px-6 rounded-xl text-xl font-bold flex items-center justify-center gap-2";
+         const btnCalc = document.getElementById('btn-calc');
+         btnCalc.disabled=false; btnCalc.className="btn-3d bg-emerald-500 text-white py-4 px-6 rounded-xl text-xl font-bold flex items-center justify-center gap-2 animate-bounce";
+         
+         tEl.classList.add('strike'); tEl.innerHTML += `<div class="borrow-box">${tens-1}</div>`;
+         oEl.classList.add('strike'); oEl.innerHTML += `<div class="borrow-box">${afterBorrowOnes}</div>`;
+         document.getElementById('borrow-fb').textContent = "10 ditambah pada Sa!"; speak("Satu puluh dipinjam, jadi sepuluh sa.");
+      };
+
+      document.getElementById('btn-calc').onclick = function(){
+         const ansO = afterBorrowOnes - subO; const ansT = (tens-1) - subT;
+         document.getElementById('ans-ones').textContent = ansO; document.getElementById('ans-tens').textContent = ansT;
+         this.disabled=true; this.classList.remove('animate-bounce');
+         document.getElementById('borrow-fb').textContent = `Jawapan: ${ansT}${ansO}`;
+         document.getElementById('borrow-fb').className = "mt-4 font-bold text-center text-3xl h-8 text-emerald-600";
+         triggerWin(); speak(`Jawapan ialah ${ansT}${ansO}`);
+      };
     }
 
-    // Pastikan TTS resume pada sesetengah pelayar
-    if('speechSynthesis' in window){
-      setInterval(()=>{ if(window.speechSynthesis.paused) window.speechSynthesis.resume(); }, 1000);
-    }
   </script>
 </body>
 </html>
